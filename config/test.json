@@ -1,0 +1,14 @@
+{
+    "bench_folder": "./benchmark/test/",
+    "bench_filter": "",
+    "qasm_path": "./result/qasm/test/",
+    "excel_path": "./result/excel/test.xlsx",
+    "backend": "rochester",
+    "reps": 1,
+    "objective": "size",
+    "test_methods": [
+        "new"
+    ],
+    "output_qasm": false,
+    "output_excel": true
+}
