@@ -3,7 +3,7 @@ from copy import copy, deepcopy
 from numpy import inf
 from queue import Queue
 
-from qiskit.circuit import QuantumRegister, Qubit
+from qiskit.circuit import Qubit
 from qiskit.dagcircuit import DAGCircuit, DAGOpNode
 from qiskit.transpiler.basepasses import AnalysisPass
 from qiskit.transpiler.coupling import CouplingMap
@@ -12,8 +12,6 @@ from qiskit.transpiler.layout import Layout
 from qiskit.transpiler.target import Target
 
 from utils import (
-    coupling_longest_shortest_distance,
-    coupling_qubit_neighborhood,
     interaction_graph,
     dag_qubit_distance_matrix
 )
@@ -47,143 +45,64 @@ class Layout_0871(AnalysisPass):
             TranspilerError: if dag wider than self.coupling_map
         """
         if len(dag.qubits) > self.coupling_map.size():
-            raise TranspilerError("More virtual qubits exist than physical.")
+            raise TranspilerError("More logical qubits exist than physical.")
         
-        print(f"In Layout 087")
+        print(f"In Layout 0871")
 
-        best_operations = list()
-        best_layout = None
-        reps = 2
- 
+        best_log = self._sort_dag_qubits(dag)[0]
+        best_phy = self._sort_coupling_qubits()[0]
+        layout = Layout({best_log: best_phy})
+        print(f"layout: {layout}")
+        IG = interaction_graph(dag)
+        RANK = self._get_logical_bits_rank(dag)
+        log_dist_matrix = dag_qubit_distance_matrix(dag)
 
+        # For each dag qubit, sort its neighbors based on their ranks
+        for q in dag.qubits:
+            ranks_nbr = [(n, RANK[n]) for n in IG[q]]
+            IG[q] = [idx for idx, _ in sorted(ranks_nbr, key=lambda x: x[1])]
 
-        layout = self._mapping_1(dag)
-        # print(self.coupling_map.size())
+        p_que = Queue()
+        # visited_p = dict.fromkeys(self.coupling_map.physical_qubits, False)
+        # visited_v = dict.fromkeys(dag.qubits, False)
+
+        p_que.put(best_phy)
+        # visited_p[best_phy] = True
+        # visited_v[best_log] = True
+
+        while not p_que.empty():
+            curr_p = p_que.get()
+
+            # Find unmapped neighbor of current physical qubit
+            for pn in sorted(self.coupling_map.neighbors(curr_p)):
+                # if not visited_p[pn]:
+                if pn not in layout.get_physical_bits():
+                    curr_v = layout._p2v[curr_p]
+
+                    # Find unmapped interactivity of current logical qubit
+                    # If found, map it to the current p_neighbor
+                    for ln in IG[curr_v]:
+                        # if not visited_v[ln]:
+                        if dag.qubits[ln] not in layout.get_virtual_bits():
+                            # visited_v[ln] = True
+                            # visited_p[pn] = True
+                            layout.add(dag.qubits[ln], pn)
+                            p_que.put(pn)
+                            break
         
-        # print(layout)
-        # for _ in range(self.coupling_map.size() - len(layout)):
-        #     layout.add()
-        # idle_p = [p for p in self.coupling_map.physical_qubits if p not in layout.get_physical_bits()]
-        # if idle_p:
-        #     qreg = QuantumRegister(len(idle_p), name="q")
-        #     layout.add_register(qreg)
-        #     dag.add_qreg(qreg)
-        
-        #     for idx, p in enumerate(idle_p):
-        #         layout[p] = qreg[idx]
-        
-        # for mapping_option in [1, 2]:
-        #     if mapping_option == 1:
-        #         layout = self._mapping_1(dag)
-        #     elif mapping_option == 2:
-        #         layout = self._mapping_2(dag)
+        print(f"after bfs: {layout}")
 
-        #     for qreg in dag.qregs.values():
-        #         layout.add_register(qreg)
-            
-        #     # Map idle physical qubits to ancilla qubits
-        #     idle_p = [p for p in self.coupling_map.physical_qubits if p not in layout.get_physical_bits()]
+        # Sort unmapped logical and physical qubits by their distance to `best_v` and `best_p` respectively
+        unmapped_log = (dag.qubits.index(q) for q in dag.qubits if q not in layout.get_virtual_bits())
+        unmapped_phy = (v for v in self.coupling_map.physical_qubits if v not in layout.get_physical_bits())
+        dist_to_best_log = (log_dist_matrix[q][dag.qubits.index(best_log)] for q in unmapped_log)
+        sorted_unmapped_v_idx = (v_idx for _, v_idx in sorted(zip(dist_to_best_log, unmapped_log)))
+        dist_to_best_phy = (self.dist_matrix[v][best_phy] for v in unmapped_phy)
+        sorted_unmapped_p = (p for _, p in sorted(zip(dist_to_best_phy, unmapped_phy)))
 
-        #     if idle_p:
-        #         qreg = QuantumRegister(len(idle_p), name="ancilla")
-        #         layout.add_register(qreg)
-        #         dag.add_qreg(qreg)
-            
-        #         for idx, p in enumerate(idle_p):
-        #             layout[p] = qreg[idx]
-            
-        #     for _ in range(reps):
-        #         trial_operations = list()
-        #         trial_layout = layout.copy()
+        for v_idx, p in zip(sorted_unmapped_v_idx, sorted_unmapped_p):
+            layout.add(dag.qubits[v_idx], p)
 
-        #         front_layer = dag.front_layer()
-        #         self.applied_predecessors = defaultdict(int)
-
-        #         for _, input_node in dag.input_map.items():
-        #             for successor in self._successors(input_node, dag):
-        #                 self.applied_predecessors[successor] += 1
-
-        #         while front_layer:
-        #             curr_gate = front_layer[0]
-        #             v0, v1 = curr_gate.qargs
-        #             p0, p1 = (trial_layout._v2p[v] for v in curr_gate.qargs)
-
-        #             if self.coupling_map.graph.has_edge(p0, p1):
-        #                 assert self.dist_matrix[p0][p1] == 1
-        #                 trial_operations.append({"name": curr_gate.op.name, "qargs": curr_gate.qargs})
-        #                 front_layer.remove(curr_gate)
-
-        #                 for successor in self._successors(curr_gate, dag):
-        #                     self.applied_predecessors[successor] += 1
-        #                     if self._is_resolved(successor):
-        #                         front_layer.append(successor)
-        #             else:
-        #                 assert self.dist_matrix[p0][p1] != 1
-
-        #                 # Find the path from `p0` to `mid_p` and the path from `p1` to `mid_p`
-        #                 best_mid = None
-        #                 mini = Infinity
-        #                 max_shortest_dist = coupling_longest_shortest_distance(self.coupling_map)
-        #                 shortest_path = self.coupling_map.shortest_undirected_path(p0, p1)
-        #                 mid_center = shortest_path[len(shortest_path) // 2]
-        #                 mid_neighbors = coupling_qubit_neighborhood(self.coupling_map, mid_center, range=3)
-        #                 mid_search_list = (p for p in [mid_center] + mid_neighbors if p not in [p0, p1])
-
-        #                 for _p in mid_search_list:
-        #                     if (
-        #                         abs(self.dist_matrix[p0][_p] - self.dist_matrix[p1][_p]) <= 3 and
-        #                         max_shortest_dist[_p] < mini
-        #                     ):
-        #                         mini = max_shortest_dist[_p]
-        #                         best_mid = _p
-                        
-        #                 assert best_mid != None
-        #                 path_p0 = self.coupling_map.shortest_undirected_path(p0, best_mid)
-        #                 path_p1 = self.coupling_map.shortest_undirected_path(p1, best_mid)
-                        
-        #                 # Consecutively swap `p0` to `mid_p` (included)
-        #                 for i in range(len(path_p0)-1):
-        #                     _v0, _v1 = (trial_layout._p2v[p] for p in (path_p0[i], path_p0[i+1]))
-        #                     trial_operations.append({"name": "swap", "qargs": (_v0, _v1)})
-        #                     trial_layout.swap(_v0, _v1)
-
-        #                 # Consecutively swap `p1` to `mid_p` (excluded)
-        #                 for i in range(len(path_p1)-2):
-        #                     _v0, _v1 = (trial_layout._p2v[p] for p in (path_p1[i], path_p1[i+1]))
-        #                     trial_operations.append({"name": "swap", "qargs": (_v0, _v1)})
-        #                     trial_layout.swap(_v0, _v1)
-
-        #                 assert self.dist_matrix[trial_layout._v2p[v0]][trial_layout._v2p[v1]] == 1
-        #                 trial_operations.append({"name": curr_gate.op.name, "qargs": curr_gate.qargs})
-        #                 front_layer.remove(curr_gate)
-
-        #                 for successor in self._successors(curr_gate, dag):
-        #                     self.applied_predecessors[successor] += 1
-        #                     if self._is_resolved(successor):
-        #                         front_layer.append(successor)
-                
-        #         # If there are swap gate before the first CX gate, then swaps
-        #         while trial_operations:
-        #             op = trial_operations[0]
-
-        #             if op["name"] == "swap":
-        #                 trial_operations.pop(0)
-        #                 layout.swap(*op["qargs"])
-        #             else:
-        #                 break
-                
-        #         # If this is the first trial
-        #         if len(best_operations) == 0:
-        #             best_operations = copy(trial_operations)
-        #             best_layout = layout.copy()
-        #         # If this trial result has less swap gates than the best record
-        #         elif len(trial_operations) < len(best_operations):
-        #             best_operations = copy(trial_operations)
-        #             best_layout = layout.copy()
-                
-        #         # Update current `initial_layout` with `trial_layout`
-        #         layout = trial_layout
-                
         self.property_set['layout'] = layout
 
     def _successors(self, node, dag):
@@ -196,77 +115,8 @@ class Layout_0871(AnalysisPass):
     def _is_resolved(self, node):
         """Return True if all of a node's predecessors in dag are applied."""
         return self.applied_predecessors[node] == len(node.qargs)
-        
-    def _mapping_1(self, dag: DAGCircuit):
-        """The first mapping method 
-        
-        Args:
-            dag (DAGCircuit): DAG to find layout for.
-        """
-        # Get the physical qubit with smallest maximum value of shortest distance 
-        best_p = self._sort_coupling_qubits()[0]
-        # Get the logical qubit with the most interactivity
-        best_v = self._sort_dag_qubits(dag)[0]
-        layout = Layout({best_v: best_p})
-        v_interact = interaction_graph(dag)
-        v_ranks = self._get_dag_qubit_rank(dag)
-        log_dist_matrix = dag_qubit_distance_matrix(dag)
-
-        # For each dag qubit, sort its neighbors based on their ranks
-        for v in dag.qubits:
-            neighbor_ranks = list()
-            neighbor_idx = list()
-
-            for neighbor in v_interact[v]:
-                neighbor_ranks.append(v_ranks[neighbor])
-                neighbor_idx.append(dag.qubits.index(neighbor))
-            
-            v_interact[v] = [
-                dag.qubits[idx] for _, idx in sorted(zip(neighbor_ranks, neighbor_idx))
-            ]
-
-        p_que = Queue()
-        visited_p = dict.fromkeys(self.coupling_map.physical_qubits, False)
-        visited_v = dict.fromkeys(dag.qubits, False)
-
-        p_que.put(best_p)
-        visited_p[best_p] = True
-        visited_v[best_v] = True
-
-        while not p_que.empty():
-            curr_p = p_que.get()
-
-            # Find unmapped neighbor of current physical qubit
-            for p_neighbor in sorted(self.coupling_map.neighbors(curr_p)):
-                if not visited_p[p_neighbor]:
-                    curr_v = layout._p2v[curr_p]
-
-                    # Find unmapped interactivity of current logical qubit
-                    # If found, map it to the current p_neighbor
-                    for v_neighbor in v_interact[curr_v]:
-                        if not visited_v[v_neighbor]:
-                            visited_v[v_neighbor] = True
-                            visited_p[p_neighbor] = True
-                            layout.add(v_neighbor, p_neighbor)
-                            p_que.put(p_neighbor)
-                            break
-        
-        # print(f"after bfs: {layout}")
-
-        # Sort unmapped logical and physical qubits by their distance to `best_v` and `best_p` respectively
-        unmapped_v_idx = (dag.qubits.index(v) for v in visited_v.keys() if visited_v[v] == False)
-        unmapped_p = (p for p in visited_p.keys() if visited_p[p] == False)
-        dist_to_best_v = (log_dist_matrix[v_idx][dag.qubits.index(best_v)] for v_idx in unmapped_v_idx)
-        sorted_unmapped_v_idx = (v_idx for _, v_idx in sorted(zip(dist_to_best_v, unmapped_v_idx)))
-        dist_to_best_p = (self.dist_matrix[p][best_p] for p in unmapped_p)
-        sorted_unmapped_p = (p for _, p in sorted(zip(dist_to_best_p, unmapped_p)))
-
-        for v_idx, p in zip(sorted_unmapped_v_idx, sorted_unmapped_p):
-            layout.add(dag.qubits[v_idx], p)
-
-        return layout
     
-    def _get_dag_qubit_rank(self, dag: DAGCircuit):
+    def _get_logical_bits_rank(self, dag: DAGCircuit):
         rank = 1
         ranks = dict.fromkeys(dag.qubits, 1)
         front_layer = dag.front_layer()

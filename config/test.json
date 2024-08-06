@@ -7,7 +7,7 @@
     "reps": 1,
     "objective": "size",
     "test_methods": [
-        "new"
+        "0871"
     ],
     "output_qasm": false,
     "output_excel": true
