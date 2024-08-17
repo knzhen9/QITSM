@@ -18,7 +18,7 @@ from utils import (
     dag_qubit_distance_matrix
 )
 
-class Layout_new(AnalysisPass):
+class Layout_Main(AnalysisPass):
     def __init__(self, coupling_map):
         super().__init__()
 
@@ -49,7 +49,7 @@ class Layout_new(AnalysisPass):
         if len(dag.qubits) > self.coupling_map.size():
             raise TranspilerError("More logical qubits exist than physical.")
         
-        print(f"In Layout new")
+        print(f"In Layout Main")
  
         layout = Layout()
         IG = interaction_graph(dag)

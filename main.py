@@ -38,7 +38,7 @@ from layout.layout_087 import Layout_087
 from layout.layout_0871 import Layout_0871
 from layout.layout_0872 import Layout_0872
 from layout.layout_test import Layout_Test
-from layout.layout_new import Layout_new
+from layout.layout_Main import Layout_Main
 
 '''ROUTING'''
 # from qiskit.transpiler.passes import SabreSwap
@@ -142,8 +142,8 @@ def run(
             trial_layout = Layout_023(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
             trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
-        elif method.lower() == "new":
-            trial_layout = Layout_new(coupling_map)
+        elif method.lower() == "main":
+            trial_layout = Layout_Main(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
             trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
         else:

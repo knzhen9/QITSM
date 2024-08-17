@@ -8,7 +8,7 @@
     "objective": "size",
     "test_methods": [
         "sabre",
-        "new"
+        "main"
     ],
     "output_qasm": false,
     "output_excel": true
