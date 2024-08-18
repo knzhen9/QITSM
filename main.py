@@ -84,26 +84,26 @@ def run(
         verbose: bool = False
 ) -> Tuple[int, defaultdict[int], int, defaultdict[int], defaultdict[float]]:
 
-    size_out = defaultdict(lambda: inf)
-    depth_out = defaultdict(lambda: inf)
-    runtime = defaultdict(float)
-    using_layout = [0,0,0,0,0]
+    size_out = defaultdict(list)
+    depth_out = defaultdict(list)
+    runtime = defaultdict(list)
+    # using_layout = [0,0,0,0,0]
     coupling_map = CouplingMap(couplinglist=BACKENDS[backend].edges())
     coupling_map.make_symmetric()
     init_circ, init_start, init_end = initialize_circuit(bench_path)
-    print(f"INPUT CIRCUIT QREGS: {init_circ.qregs}")
-    print(f"INPUT CIRCUIT SIZE: {init_circ.size()}")
-    print(f"INPUT CIRCUIT DEPTH: {init_circ.depth()}")
+    # print(f"INPUT CIRCUIT QREGS: {init_circ.qregs}")
+    # print(f"INPUT CIRCUIT SIZE: {init_circ.size()}")
+    # print(f"INPUT CIRCUIT DEPTH: {init_circ.depth()}")
     size_in = init_circ.size()
     depth_in = init_circ.depth()
 
     for method in test_methods:
-        print("=" * (len(method) + 4))
-        print(f"| {method} |")
-        print("=" * (len(method) + 4))
+        # print("=" * (len(method) + 4))
+        # print(f"| {method} |")
+        # print("=" * (len(method) + 4))
 
 
-        print(coupling_map)
+        # print(coupling_map)
         if method.lower() == "sabre":
             trial_layout = SabreLayout(coupling_map, skip_routing=True)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
@@ -114,18 +114,18 @@ def run(
         elif method.lower() == "018":
             trial_layout = Layout_018(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
-            trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
+            # trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
         elif method.lower() == "087":
             trial_layout = Layout_087(coupling_map)
             trial_routing = Routing_087(coupling_map)
         elif method.lower() == "0871":
             trial_layout = Layout_0871(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
-            trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
+            # trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
         elif method.lower() == "0872":
             trial_layout = Layout_0872(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
-            trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
+            # trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
         elif method.lower() == "037":
             trial_layout = Layout_037(coupling_map)
             trial_routing = Routing_037(coupling_map)
@@ -141,7 +141,7 @@ def run(
         elif method.lower() == "023":
             trial_layout = Layout_023(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
-            trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
+            # trial_routing = SabreSwap0330(coupling_map, heuristic="basic", seed=1)
         elif method.lower() == "main":
             trial_layout = Layout_Main(coupling_map)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
@@ -150,18 +150,25 @@ def run(
             raise ValueError("No such method")
 
         for i in range(1, reps+1):
-            print(f"method: {method}, reps = {i}")
-            if method.lower() == "sabre":
-                pm = PassManager([
-                    trial_layout,
-                    FullAncillaAllocation(coupling_map),
-                    EnlargeWithAncilla(),
-                    ApplyLayout(),
-                    trial_routing,
-                    Decompose(SwapGate)
-                ])
-            else:
-                pm = PassManager([
+            # if method.lower() == "sabre":
+            #     pm = PassManager([
+            #         trial_layout,
+            #         FullAncillaAllocation(coupling_map),
+            #         EnlargeWithAncilla(),
+            #         ApplyLayout(),
+            #         trial_routing,
+            #         Decompose(SwapGate)
+            #     ])
+            # else:
+            #     pm = PassManager([
+            #         trial_layout,
+            #         FullAncillaAllocation(coupling_map),
+            #         EnlargeWithAncilla(),
+            #         ApplyLayout(),
+            #         trial_routing,
+            #         Decompose(SwapGate)
+            #     ])
+            pm = PassManager([
                     trial_layout,
                     FullAncillaAllocation(coupling_map),
                     EnlargeWithAncilla(),
@@ -175,23 +182,32 @@ def run(
             #     using_layout[trial_layout.using_mapping_number] += 1
             #     print("In main : ",trial_layout.using_mapping_number)
             end = time.time()
+            t = (init_end - init_start) + (end - start)
             size = result_circ.size()
             depth = result_circ.depth()
-            
-            t = (init_end - init_start) + (end - start)
-            if objective.lower() == "size" and size >= size_out[method]:
-                continue
-            if objective.lower() == "depth" and depth >= depth_out[method]:
-                continue
-            size_out[method] = size
-            depth_out[method] = depth
-            runtime[method] = t
 
             if verbose:
-                print(f"Updating best record of {method} ...")
+                print('+' + '-' * 38 + '+')
+                print(f"CIRCUIT: {str(bench_path).split('\\')[-1].replace('.qasm', '')}")
+                print(f"BACKEND: {backend}")
+                print(f"METHOD: {method}\t(REPS = {i})")
                 print(f"    size: {size}")
                 print(f"    depth: {depth}")
-                print(f"    runtime: {t}")
+                print(f"    runtime: {round(t, 2)}")
+                print('+' + '-' * 38 + '+')
+            
+            # if objective.lower() == "size" and size >= size_out[method]:
+            #     continue
+            # if objective.lower() == "depth" and depth >= depth_out[method]:
+            #     continue
+            # size_out[method] = size
+            # depth_out[method] = depth
+            # runtime[method] = t
+
+            # record all reps, and then average
+            size_out[method].append(size)
+            depth_out[method].append(depth)
+            runtime[method].append(t)
 
     return size_in, size_out, depth_in, depth_out, runtime
 
@@ -309,14 +325,12 @@ def main(
     runtimes = defaultdict(dict)
 
     print("+++++++++++++++++++++++++++++++++++++")
-    print(f"BACKEND\t\t{backend}")
-    print(f"BACKEND INFO\t{BACKENDS[backend]}")
+    print(f"BACKEND\t\t\t{backend} ({BACKENDS[backend]})")
+    print(f"BENCHMARK FOLDER\t{bench_folder.replace("./benchmark/", "")}")
     print(f"TEST METHODS\t\t{', '.join(test_methods)}")
-    total_using_layout = [0,0,0,0,0]
+    print("+++++++++++++++++++++++++++++++++++++")
+
     for bench_path in Path(bench_folder).iterdir():
-        filename = str(bench_path).split('\\')[-1].replace(".qasm", "")
-        print(f"BENCHMARK\t{bench_path}")
-        print("+++++++++++++++++++++++++++++++++++++")
 
         size_in, size_out, depth_in, depth_out, runtime = run(
             bench_path=bench_path,
@@ -326,33 +340,43 @@ def main(
             objective=objective,
             verbose=verbose
         ) 
-        # print("Benchmark",bench_path,"Using Layout",layout_option)
-        # total_using_layout  = [total_using_layout[i] + layout_option[i] for i in range(len(layout_option))]
-        size_ins[filename] = size_in
-        depth_ins[filename] = depth_in
-        for method in test_methods:
-            size_outs[filename][method] = size_out[method]
-            depth_outs[filename][method] = depth_out[method]
-            runtimes[filename][method] = runtime[method]
-            print(method)
-            print(f"\tsize out/in ratio: {round(size_outs[filename][method]/size_in, 3)}")
-            print(f"\tdepth out/in ratio: {round(depth_outs[filename][method]/depth_in, 3)}")
-            print(f"\truntime (s): {round(runtimes[filename][method], 2)}")
-        print("-------------------------------------")
 
-    print("================ FINAL RESULT ================")
+        # Record experiment results
+        circuit = str(bench_path).split('\\')[-1].replace(".qasm", "")
+        size_ins[circuit] = size_in
+        depth_ins[circuit] = depth_in
+
+        for method in test_methods:
+            size_outs[circuit][method] = mean(size_out[method])
+            depth_outs[circuit][method] = mean(depth_out[method])
+            runtimes[circuit][method] = mean(runtime[method])
+
+        # Show experiment results to console
+        for method in test_methods:
+            print("= " * 30)
+            print(f"circuit: {circuit}")
+            print(f"backend: {backend}")
+            print(f"method: {method}")
+            print(f"\tsize out/in ratio:\t {',\t '.join([str(round(sz/size_in, 3)) for sz in size_out[method]])}")
+            print(f"\tdepth out/in ratio:\t {',\t '.join([str(round(dp/depth_in, 3)) for dp in depth_out[method]])}")
+            print(f"\truntime:\t\t {',\t '.join([str(round(tm, 2)) for tm in runtime[method]])}")
+            print("= " * 30)
+
+        print('V' * 60)
+
+    # print("================ FINAL RESULT ================")
     
-    total_size_in = sum(size_ins.values())
-    total_depth_in = sum(depth_ins.values())
-    for method in test_methods:
-        print(method)
-        total_size_out = sum([size_outs[filename][method] for filename in size_outs.keys()])
-        total_depth_out = sum([depth_outs[filename][method] for filename in depth_outs.keys()])
-        avg_runtime = mean([runtimes[filename][method] for filename in runtimes.keys()])
-        print(f"\taverage size out/in ratio: {round(total_size_out/total_size_in, 3)}")
-        print(f"\taverage depth out/in ratio: {round(total_depth_out/total_depth_in, 3)}")
-        print(f"\taverage runtime (s): {round(avg_runtime, 2)}")
-    print("Total Using Layout : ",total_using_layout)
+    # total_size_in = sum(size_ins.values())
+    # total_depth_in = sum(depth_ins.values())
+    # for method in test_methods:
+    #     print(method)
+    #     total_size_out = sum([size_outs[filename][method] for filename in size_outs.keys()])
+    #     total_depth_out = sum([depth_outs[filename][method] for filename in depth_outs.keys()])
+    #     avg_runtime = mean([runtimes[filename][method] for filename in runtimes.keys()])
+    #     print(f"\taverage size out/in ratio: {round(total_size_out/total_size_in, 3)}")
+    #     print(f"\taverage depth out/in ratio: {round(total_depth_out/total_depth_in, 3)}")
+    #     print(f"\taverage runtime (s): {round(avg_runtime, 2)}")
+    # print("Total Using Layout : ",total_using_layout)
     
 
     finish_time = time.strftime("%c", time.localtime())
