@@ -89,7 +89,7 @@ class Layout_Main(AnalysisPass):
                             spars_all.remove((pn, s))
                             break
 
-        print(f"layout: {layout}")
+        # print(f"layout: {layout}")
         self.property_set['layout'] = layout
 
     def _get_logical_bits_interactivity(self, dag: DAGCircuit) -> dict[int, int]:
@@ -104,7 +104,7 @@ class Layout_Main(AnalysisPass):
         """
         # inter = dict.fromkeys(list(range(len(dag.qubits))), 0)
         inter = defaultdict(int)
-        print(inter)
+        # print(inter)
 
         for q in dag.qubits:
             inter[q._index] = 0
@@ -115,7 +115,7 @@ class Layout_Main(AnalysisPass):
                 inter[q0_idx] += 1
                 inter[q1_idx] += 1
 
-        print(f"inter: {inter}")
+        # print(f"inter: {inter}")
         return inter
         inter = sorted(inter.items(), key=lambda x: x[1], reverse=True)
         print(inter)
@@ -130,7 +130,7 @@ class Layout_Main(AnalysisPass):
         """
         # spars = dict.fromkeys(self.coupling_map.physical_qubits, 0)
         spars = defaultdict(int)
-        print(spars)
+        # print(spars)
 
         for v in self.coupling_map.physical_qubits:
             spars[v] = 0
@@ -139,7 +139,7 @@ class Layout_Main(AnalysisPass):
             for v1 in self.coupling_map.physical_qubits:
                 spars[v0] = max(spars[v0], int(self.dist_matrix[v0][v1]))
         
-        print(f"spars: {spars}")
+        # print(f"spars: {spars}")
         return spars
         spars = sorted(spars.items(), key=lambda x: x[1])
         print(spars)

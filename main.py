@@ -94,6 +94,7 @@ def run(
     # print(f"INPUT CIRCUIT QREGS: {init_circ.qregs}")
     # print(f"INPUT CIRCUIT SIZE: {init_circ.size()}")
     # print(f"INPUT CIRCUIT DEPTH: {init_circ.depth()}")
+    qubits_in = len(init_circ.qubits)
     size_in = init_circ.size()
     depth_in = init_circ.depth()
 
@@ -204,16 +205,17 @@ def run(
             # depth_out[method] = depth
             # runtime[method] = t
 
-            # record all reps, and then average
+            # record experiment resulf of each rep
             size_out[method].append(size)
             depth_out[method].append(depth)
             runtime[method].append(t)
 
-    return size_in, size_out, depth_in, depth_out, runtime
+    return qubits_in, size_in, size_out, depth_in, depth_out, runtime
 
 def export_excel(
         excel_path: str,
         test_methods: list[str],
+        qubits_ins: defaultdict[int],
         size_ins: defaultdict[int],
         size_outs: defaultdict[dict],
         depth_ins: defaultdict[int],
@@ -234,51 +236,54 @@ def export_excel(
 
     for sheet in wb.worksheets:
         sheet['A1'] = "Benchmark"
-        sheet['B1'] = sheet.title + "_in"
+        sheet['B1'] = "Qubits"
+        sheet['C1'] = sheet.title + "_in"
 
-        for idx, method in enumerate(test_methods, start=1):
-            col_idx = idx * 3
+        for idx, method in enumerate(test_methods):
+            col_idx = 3 + idx * 3
             prefix = method.upper()
-            sheet.cell(row=1, column=col_idx).value = f"{prefix}_{sheet.title}_out"
-            sheet.cell(row=1, column=col_idx+1).value = f"{prefix}_{sheet.title}_ratio"
-            sheet.cell(row=1, column=col_idx+2).value = f"{prefix}_runtime"
+            sheet.cell(row=1, column=col_idx+1).value = f"{prefix}_{sheet.title}_out"
+            sheet.cell(row=1, column=col_idx+2).value = f"{prefix}_{sheet.title}_ratio"
+            sheet.cell(row=1, column=col_idx+3).value = f"{prefix}_runtime"
         
-        for row_idx, bench_name in enumerate(size_ins.keys(), start=2):
-            sheet.cell(row=row_idx, column=1).value = bench_name
+        for row_idx, circuit in enumerate(size_ins.keys(), start=2):
+            sheet.cell(row=row_idx, column=1).value = circuit
+            sheet.cell(row=row_idx, column=2).value = qubits_ins[circuit]
 
             if sheet.title.lower() == "size":
-                sheet.cell(row=row_idx, column=2).value = size_ins[bench_name]
+                sheet.cell(row=row_idx, column=3).value = size_ins[circuit]
 
-                for idx, method in enumerate(test_methods, start=1):
-                    col_idx = idx * 3
-                    ratio = round(size_outs[bench_name][method]/size_ins[bench_name], 3)
-                    runtime = round(runtimes[bench_name][method], 2)
-                    sheet.cell(row=row_idx, column=col_idx).value = size_outs[bench_name][method]
-                    sheet.cell(row=row_idx, column=col_idx+1).value = ratio
-                    sheet.cell(row=row_idx, column=col_idx+2).value = runtime
+                for idx, method in enumerate(test_methods):
+                    col_idx = 3 + idx * 3
+                    ratio = round(size_outs[circuit][method]/size_ins[circuit], 3)
+                    runtime = round(runtimes[circuit][method], 2)
+                    sheet.cell(row=row_idx, column=col_idx+1).value = size_outs[circuit][method]
+                    sheet.cell(row=row_idx, column=col_idx+2).value = ratio
+                    sheet.cell(row=row_idx, column=col_idx+3).value = runtime
 
             elif sheet.title.lower() == "depth":
-                sheet.cell(row=row_idx, column=2).value = depth_ins[bench_name]
+                sheet.cell(row=row_idx, column=3).value = depth_ins[circuit]
 
-                for idx, method in enumerate(test_methods, start=1):
-                    col_idx = idx * 3
-                    ratio = round(depth_outs[bench_name][method]/depth_ins[bench_name], 3)
-                    runtime = round(runtimes[bench_name][method], 2)
-                    sheet.cell(row=row_idx, column=col_idx).value = depth_outs[bench_name][method]
-                    sheet.cell(row=row_idx, column=col_idx+1).value = ratio
-                    sheet.cell(row=row_idx, column=col_idx+2).value = runtime
+                for idx, method in enumerate(test_methods):
+                    col_idx = 3 + idx * 3
+                    ratio = round(depth_outs[circuit][method]/depth_ins[circuit], 3)
+                    runtime = round(runtimes[circuit][method], 2)
+                    sheet.cell(row=row_idx, column=col_idx+1).value = depth_outs[circuit][method]
+                    sheet.cell(row=row_idx, column=col_idx+2).value = ratio
+                    sheet.cell(row=row_idx, column=col_idx+3).value = runtime
     
     # Style configurations
     for sheet in wb.worksheets:
         sheet.column_dimensions['A'].width = 20
         sheet.column_dimensions['B'].width = 8
+        sheet.column_dimensions['C'].width = 8
         best_records = dict.fromkeys(range(2, sheet.max_row+1), (inf, list()))
 
-        for col_idx in range(3, sheet.max_column+1):
+        for col_idx in range(4, sheet.max_column+1):
             letter = get_column_letter(col_idx)
-            sheet.column_dimensions[letter].width = len(sheet[letter+"1"].value)
+            sheet.column_dimensions[letter].width = len(sheet[letter+"1"].value) + 2
             
-            if col_idx % 3 == 1:
+            if col_idx % 3 == 2:
                 # Iterate every benchmark
                 for row_idx in range(2, sheet.max_row+1):
                     curr_cell = sheet.cell(row=row_idx, column=col_idx)
@@ -318,6 +323,7 @@ def main(
     if reps < 0:
         raise ValueError("`reps` must be a non-zero positive integer")
 
+    qubits_ins = defaultdict(int)
     size_ins = defaultdict(int)
     depth_ins = defaultdict(int)
     size_outs = defaultdict(dict)
@@ -332,7 +338,7 @@ def main(
 
     for bench_path in Path(bench_folder).iterdir():
 
-        size_in, size_out, depth_in, depth_out, runtime = run(
+        qubits_in, size_in, size_out, depth_in, depth_out, runtime = run(
             bench_path=bench_path,
             backend=backend,
             test_methods=test_methods,
@@ -343,6 +349,7 @@ def main(
 
         # Record experiment results
         circuit = str(bench_path).split('\\')[-1].replace(".qasm", "")
+        qubits_ins[circuit] = qubits_in
         size_ins[circuit] = size_in
         depth_ins[circuit] = depth_in
 
@@ -357,6 +364,7 @@ def main(
             print(f"circuit: {circuit}")
             print(f"backend: {backend}")
             print(f"method: {method}")
+            print(f"\t# of qubits:\t\t {qubits_in}")
             print(f"\tsize out/in ratio:\t {',\t '.join([str(round(sz/size_in, 3)) for sz in size_out[method]])}")
             print(f"\tdepth out/in ratio:\t {',\t '.join([str(round(dp/depth_in, 3)) for dp in depth_out[method]])}")
             print(f"\truntime:\t\t {',\t '.join([str(round(tm, 2)) for tm in runtime[method]])}")
@@ -386,6 +394,7 @@ def main(
         export_excel(
             excel_path=excel_path,
             test_methods=test_methods,
+            qubits_ins=qubits_ins,
             size_ins=size_ins,
             size_outs=size_outs,
             depth_ins=depth_ins,
