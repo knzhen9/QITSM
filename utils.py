@@ -1,15 +1,15 @@
 from ag import *
 from collections import defaultdict
-from qiskit_ibm_runtime.fake_provider import (
-    FakeOurenseV2,      # 5 qubits
-    FakeJakartaV2,      # 7 qubits
-    FakeRochesterV2     # 53 qubits
-)
-from qiskit.transpiler.passes import (
-    BasicSwap,
-    SabreSwap,
-    StochasticSwap
-)
+# from qiskit_ibm_runtime.fake_provider import (
+#     FakeOurenseV2,      # 5 qubits
+#     FakeJakartaV2,      # 7 qubits
+#     FakeRochesterV2     # 53 qubits
+# )
+# from qiskit.transpiler.passes import (
+#     BasicSwap,
+#     SabreSwap,
+#     StochasticSwap
+# )
 from qiskit.circuit import Qubit
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.transpiler.coupling import CouplingMap
@@ -17,16 +17,14 @@ from qiskit.transpiler.coupling import CouplingMap
 BACKENDS = {
     'tokyo': tokyo(),
     'rochester': rochester(),
-    'ourense': ourense(),
-    'jakarta': FakeJakartaV2,
     'sycamore': sycamore53()
 }
 
-ROUTINGS = {
-    'basic': BasicSwap,
-    'sabre': SabreSwap,
-    'stochastic': StochasticSwap
-}
+# ROUTINGS = {
+#     'basic': BasicSwap,
+#     'sabre': SabreSwap,
+#     'stochastic': StochasticSwap
+# }
 
 def coupling_longest_shortest_distance(coupling_map: CouplingMap):
 # TODO: check the type of coupling_map in the function rather than in the argument
