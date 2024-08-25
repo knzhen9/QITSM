@@ -87,24 +87,14 @@ def run(
     size_out = defaultdict(list)
     depth_out = defaultdict(list)
     runtime = defaultdict(list)
-    # using_layout = [0,0,0,0,0]
     coupling_map = CouplingMap(couplinglist=BACKENDS[backend].edges())
     coupling_map.make_symmetric()
     init_circ, init_start, init_end = initialize_circuit(bench_path)
-    # print(f"INPUT CIRCUIT QREGS: {init_circ.qregs}")
-    # print(f"INPUT CIRCUIT SIZE: {init_circ.size()}")
-    # print(f"INPUT CIRCUIT DEPTH: {init_circ.depth()}")
     qubits_in = len(init_circ.qubits)
     size_in = init_circ.size()
     depth_in = init_circ.depth()
 
     for method in test_methods:
-        # print("=" * (len(method) + 4))
-        # print(f"| {method} |")
-        # print("=" * (len(method) + 4))
-
-
-        # print(coupling_map)
         if method.lower() == "sabre":
             trial_layout = SabreLayout(coupling_map, skip_routing=True)
             # trial_routing = SabreSwap(coupling_map, heuristic="basic", seed=1, trials=1)
@@ -151,24 +141,6 @@ def run(
             raise ValueError("No such method")
 
         for i in range(1, reps+1):
-            # if method.lower() == "sabre":
-            #     pm = PassManager([
-            #         trial_layout,
-            #         FullAncillaAllocation(coupling_map),
-            #         EnlargeWithAncilla(),
-            #         ApplyLayout(),
-            #         trial_routing,
-            #         Decompose(SwapGate)
-            #     ])
-            # else:
-            #     pm = PassManager([
-            #         trial_layout,
-            #         FullAncillaAllocation(coupling_map),
-            #         EnlargeWithAncilla(),
-            #         ApplyLayout(),
-            #         trial_routing,
-            #         Decompose(SwapGate)
-            #     ])
             pm = PassManager([
                     trial_layout,
                     FullAncillaAllocation(coupling_map),
@@ -179,9 +151,6 @@ def run(
                 ])
             start = time.time()
             result_circ = pm.run(init_circ)
-            # if method.lower() != "sabre" : 
-            #     using_layout[trial_layout.using_mapping_number] += 1
-            #     print("In main : ",trial_layout.using_mapping_number)
             end = time.time()
             t = (init_end - init_start) + (end - start)
             size = result_circ.size()
@@ -197,14 +166,6 @@ def run(
                 print(f"    runtime: {round(t, 2)}")
                 print('+' + '-' * 38 + '+')
             
-            # if objective.lower() == "size" and size >= size_out[method]:
-            #     continue
-            # if objective.lower() == "depth" and depth >= depth_out[method]:
-            #     continue
-            # size_out[method] = size
-            # depth_out[method] = depth
-            # runtime[method] = t
-
             # record experiment resulf of each rep
             size_out[method].append(size)
             depth_out[method].append(depth)
@@ -308,14 +269,11 @@ def export_excel(
 
 def main(
         bench_folder: str,
-        bench_filter: str,
-        qasm_path: str,
         excel_path: str,
         backend: str,
         reps: int,
         objective: str,
         test_methods: list[str],
-        output_qasm: bool,
         output_excel: bool,
         verbose: bool
 ) -> None:
@@ -372,21 +330,6 @@ def main(
 
         print('V' * 60)
 
-    # print("================ FINAL RESULT ================")
-    
-    # total_size_in = sum(size_ins.values())
-    # total_depth_in = sum(depth_ins.values())
-    # for method in test_methods:
-    #     print(method)
-    #     total_size_out = sum([size_outs[filename][method] for filename in size_outs.keys()])
-    #     total_depth_out = sum([depth_outs[filename][method] for filename in depth_outs.keys()])
-    #     avg_runtime = mean([runtimes[filename][method] for filename in runtimes.keys()])
-    #     print(f"\taverage size out/in ratio: {round(total_size_out/total_size_in, 3)}")
-    #     print(f"\taverage depth out/in ratio: {round(total_depth_out/total_depth_in, 3)}")
-    #     print(f"\taverage runtime (s): {round(avg_runtime, 2)}")
-    # print("Total Using Layout : ",total_using_layout)
-    
-
     finish_time = time.strftime("%c", time.localtime())
     print(f"\nFINISH TIME: {finish_time}")
     
@@ -421,14 +364,11 @@ if __name__ == "__main__":
 
     main(
             bench_folder=config["bench_folder"],
-            bench_filter=config["bench_filter"],
-            qasm_path=config["qasm_path"],
             excel_path=config["excel_path"],
             backend=config["backend"],
             reps=config["reps"],
             objective=config["objective"],
             test_methods=config["test_methods"],
-            output_qasm=config["output_qasm"],
             output_excel=config["output_excel"],
             verbose=verbose
     )

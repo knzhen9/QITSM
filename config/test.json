@@ -1,7 +1,5 @@
 {
     "bench_folder": "./benchmark/test/",
-    "bench_filter": "",
-    "qasm_path": "./result/qasm/test/",
     "excel_path": "./result/excel/test.xlsx",
     "backend": "rochester",
     "reps": 10,
@@ -10,6 +8,5 @@
         "main",
         "sabre"
     ],
-    "output_qasm": false,
     "output_excel": true
 }

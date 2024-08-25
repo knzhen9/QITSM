@@ -1,15 +1,6 @@
 from ag import *
 from collections import defaultdict
-# from qiskit_ibm_runtime.fake_provider import (
-#     FakeOurenseV2,      # 5 qubits
-#     FakeJakartaV2,      # 7 qubits
-#     FakeRochesterV2     # 53 qubits
-# )
-# from qiskit.transpiler.passes import (
-#     BasicSwap,
-#     SabreSwap,
-#     StochasticSwap
-# )
+
 from qiskit.circuit import Qubit
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.transpiler.coupling import CouplingMap
@@ -19,12 +10,6 @@ BACKENDS = {
     'rochester': rochester(),
     'sycamore': sycamore53()
 }
-
-# ROUTINGS = {
-#     'basic': BasicSwap,
-#     'sabre': SabreSwap,
-#     'stochastic': StochasticSwap
-# }
 
 def coupling_longest_shortest_distance(coupling_map: CouplingMap):
 # TODO: check the type of coupling_map in the function rather than in the argument
@@ -70,9 +55,7 @@ def interaction_graph(dag: DAGCircuit) -> dict[Qubit, set]:
         dict[Qubit, set]: every key is a `dag` qubit, and the corresponding value is a set of
         logical qubits that have interactivity with the qubit in key.
     """
-    # ig = dict.fromkeys(list(range(len(dag.qubits))), list())
     ig = defaultdict(list)
-    # print(ig)
 
     for q in dag.qubits:
         ig[q._index] = []
@@ -80,15 +63,10 @@ def interaction_graph(dag: DAGCircuit) -> dict[Qubit, set]:
     for gate in dag.op_nodes():
         if gate.op.num_qubits == 2:
             q0_idx, q1_idx = (dag.qubits.index(q) for q in gate.qargs)
-            # print(f"q0: {q0_idx}, q1: {q1_idx}")
-            # print(f"ig: {ig}")
 
             if q1_idx not in ig[q0_idx]:
-                # print(f"ig[{q0_idx}]: {ig[q0_idx]}")
-                # ig[q0_idx] += [q1_idx]
                 ig[q0_idx].append(q1_idx)
                 ig[q1_idx].append(q0_idx)
-                # print(f"ig[{q0_idx}]: {ig[q0_idx]}")
     
     return ig
 

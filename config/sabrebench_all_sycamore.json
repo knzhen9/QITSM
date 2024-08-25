@@ -1,7 +1,5 @@
 {
     "bench_folder": "./benchmark/sabre_bench/all/",
-    "bench_filter": "",
-    "qasm_path": "./result/qasm/sabrebench_all_sycamore/",
     "excel_path": "./result/excel/sabrebench_all_sycamore.xlsx",
     "backend": "sycamore",
     "reps": 20,
@@ -10,6 +8,5 @@
         "main",
         "sabre"
     ],
-    "output_qasm": false,
     "output_excel": true
 }
